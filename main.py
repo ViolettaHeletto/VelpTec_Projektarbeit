@@ -1,5 +1,5 @@
 import nltk
-from nltk.tokenize import sent_tokenize # for later tasks (sentence analysis)
+from nltk.tokenize import sent_tokenize
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
@@ -32,26 +32,19 @@ def remove_stopwords(tokens: list[str]) -> list[str]:
 
     return [
         word for word in tokens
-        if word not in stop_words and word.isalpha() #word not in string.punctuation
+        if word not in stop_words and word.isalpha()
     ]
 
 def count_words(tokens: list[str]) -> dict[str, int]:
     """Returns a dictionary {word: count}."""
-    return dict(Counter(tokens)) #.most_common()
-    # word_frequency = {}
-    # for wort in text_fur_count:
-    #     if wort in word_frequency:
-    #         word_frequency[wort] += 1
-    #     else:
-    #         word_frequency[wort] = 1
-    # return word_frequency
+    return dict(Counter(tokens))
 
-def normalize_max_frequency(word_counts: dict[str, int]) ->dict[str, float]:
-
-    max_frequency = max(word_counts.values())
-    normalize_dict = {}
+def normalize_max_frequency(word_counts: dict[str, int]) -> dict[str, float]:
+    """Normalizes word frequencies by the maximum value (range 0-1)."""
     if not word_counts:
         return {}
+    max_frequency = max(word_counts.values())
+    normalize_dict = {}
     for word, count in word_counts.items():
         normalize_dict[word] = count/max_frequency
     return normalize_dict
@@ -65,6 +58,7 @@ def tokenize_sentences(text: str) -> list[str]:
         return sent_tokenize(text)
 
 def sentence_score(sentence: str, normalized_counts: dict[str, float]) -> float:
+    """Calculates the Sentence Count for a single sentence."""
     value = 0.0
     words = word_tokenize(sentence.lower())
     for word in words:
@@ -72,11 +66,13 @@ def sentence_score(sentence: str, normalized_counts: dict[str, float]) -> float:
             value += normalized_counts.get(word, 0.0)
     return value
 
-def prozent_of_text(values: list[float], prozent: float = 20.0):
-    x = max(1, int(len(values) * prozent / 100))
-    return sorted(values, reverse=True)[:x]
+def select_top_percent(values: list[float], prozent: float = 20.0)-> set[float]:
+    """Selects the largest values from a list (top `prozent` percent)."""
+    x = max(1, round(len(values) * prozent / 100))
+    return set(sorted(values, reverse=True)[:x])
 
-def summary_output(sentences_with_value: list[tuple[str, float]], value: float):
+def summary_output(sentences_with_value: list[tuple[str, float]], value: set[float]) -> list[str]:
+    """Returns the sentences whose Sentence Count is contained in `value`."""
     summary_sentences = []
     for sentence, score in sentences_with_value:
         if score in value:
@@ -88,6 +84,8 @@ def main() -> None:
     """Main function."""
     
     file_path = "velpTEC_K4.0070_3.0_Projektarbeit_Python_ClimateScienceText.txt"
+    file_path_test = "test.txt"
+    summary_percent = 20.0
 
     try:
         text = read_text(file_path)
@@ -97,29 +95,27 @@ def main() -> None:
     except UnicodeDecodeError:
         print(f"Error: File '{file_path}' could not be read as UTF-8.")
         return
-    
+
     tokens = tokenize_words(text)
     normalized = lowercase_tokens(tokens)
     filtered_tokens = remove_stopwords(normalized)
-    #print(filtered_tokens)
     word_frequency = count_words(filtered_tokens)
-    #print(word_frequency)
     normalized_counts = normalize_max_frequency(word_frequency)
 
     sentence_list = tokenize_sentences(text)
-    weight_of_sentence = []
-    for sentence in sentence_list:
-        weight_of_sentence.append(sentence_score(sentence, normalized_counts))
 
     scored_sentences = [
     (sentence, sentence_score(sentence, normalized_counts))
     for sentence in sentence_list]
-    print(scored_sentences)
+    weight_of_sentence = [score for _, score in scored_sentences]
 
-    prozent = prozent_of_text(weight_of_sentence, 20.0)
-    print(prozent)
+    top_scores = select_top_percent(weight_of_sentence, summary_percent)
 
-    print(summary_output(scored_sentences, prozent))
+    summary = summary_output(scored_sentences, top_scores)
+    if summary:
+        print(" ".join(summary))
+    else:
+        print("Keine Zusammenfassung möglich.")
 
 
 if __name__ == "__main__":
